@@ -19,6 +19,7 @@ export default function InvoicesPage() {
 
   const [customer, setCustomer] = useState("");
   const [discount, setDiscount] = useState(0);
+  const [gst, setGst] = useState(18);
   const [currency, setCurrency] = useState("INR");
 
   const [shopName, setShopName] = useState("Shop Name");
@@ -59,12 +60,16 @@ export default function InvoicesPage() {
   // TOTAL
 
   const subtotal = items.reduce(
-    (acc, item) =>
-      acc + item.quantity * item.price,
-    0
-  );
+  (acc, item) =>
+    acc + item.quantity * item.price,
+  0
+);
 
-  const total = subtotal - discount;
+const gstAmount =
+  (subtotal * gst) / 100;
+
+const total =
+  subtotal + gstAmount - discount;
 
   // UPDATE ITEM
 
@@ -121,6 +126,10 @@ export default function InvoicesPage() {
           customer,
           description:
             JSON.stringify(items),
+
+            subtotal,
+
+            gst,
 
           quantity:
             firstItem.quantity,
@@ -362,6 +371,23 @@ export default function InvoicesPage() {
           </button>
 
         </div>
+{/* GST */}
+
+<div className="mb-6">
+
+  <label className="block mb-2 font-semibold text-gray-700">
+    GST / Tax (%)
+  </label>
+
+  <input
+    type="number"
+    value={gst}
+    onChange={(e) =>
+      setGst(Number(e.target.value))
+    }
+    className="w-full p-3 border rounded text-black bg-white"
+  />
+</div>
 
         {/* DISCOUNT */}
 
@@ -422,10 +448,39 @@ export default function InvoicesPage() {
             </span>
           </p>
 
-          <p className="text-2xl font-bold text-blue-700">
-            Grand Total:{" "}
-            {currencyMap[currency]} {total}
-          </p>
+          {/* TOTALS */}
+
+<div className="bg-gray-50 p-6 rounded-xl mb-6 border">
+
+  <p className="text-lg mb-3">
+    Subtotal:{" "}
+    <span className="font-bold">
+      {currencyMap[currency]} {subtotal.toFixed(2)}
+    </span>
+  </p>
+
+  <p className="text-lg mb-3">
+    GST / Tax ({gst}%):{" "}
+    <span className="font-bold">
+      {currencyMap[currency]} {gstAmount.toFixed(2)}
+    </span>
+  </p>
+
+  <p className="text-lg mb-3">
+    Discount:{" "}
+    <span className="font-bold">
+      {currencyMap[currency]} {discount.toFixed(2)}
+    </span>
+  </p>
+
+  <hr className="my-4" />
+
+  <p className="text-3xl font-bold text-blue-700">
+    Grand Total:{" "}
+    {currencyMap[currency]} {total.toFixed(2)}
+  </p>
+
+</div>
 
         </div>
 
