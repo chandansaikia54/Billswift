@@ -154,9 +154,10 @@ const total =
       ]);
 
     if (error) {
-      console.log(error);
-      alert("Error saving invoice");
-    } else {
+  console.log(error);
+
+  alert(JSON.stringify(error));
+} else {
 
       alert("Invoice saved successfully!");
 
