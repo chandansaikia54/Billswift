@@ -17,6 +17,7 @@ export default function InvoicesPage() {
   const [shopName, setShopName] = useState("Shop Name");
   const [shopAddress, setShopAddress] = useState("Address");
   const [contactDetails, setContactDetails] = useState("Phone No.");
+  const [gstin, setGstin] = useState("");
 
   const currencyMap: any = {
     INR: "₹",
@@ -86,6 +87,7 @@ export default function InvoicesPage() {
           price: firstItem.price,
           discount,
           total,
+          gstin,
           invoice_no: invoiceNo,
           currency,
           shop_name: shopName,
@@ -143,6 +145,14 @@ export default function InvoicesPage() {
             className="w-full p-3 border rounded"
             placeholder="Contact"
           />
+          <input
+  type="text"
+  placeholder="GSTIN"
+  value={gstin}
+  onChange={(e) => setGstin(e.target.value)}
+  className="input"
+/>
+          
         </div>
 
         {/* CUSTOMER */}

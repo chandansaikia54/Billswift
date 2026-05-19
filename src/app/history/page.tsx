@@ -33,114 +33,134 @@ export default function HistoryPage() {
 
   // ✅ PDF GENERATION (FULLY FIXED)
   function generatePDF(inv: any) {
-    const doc = new jsPDF();
-doc.rect(5, 5, 200, 287);
-    // Parse items safely
-    let items: any[] = [];
-    try {
-      items = JSON.parse(inv.description || "[]");
-    } catch {
-      items = [];
-    }
+  const doc = new jsPDF();
 
-    // HEADER
-doc.setFontSize(16);
-doc.text("BillSwift", 14, 15);
+  // =========================
+  // OUTER BORDER
+  // =========================
+  doc.setLineWidth(0.5);
+  doc.rect(5, 5, 200, 287);
 
-doc.setFontSize(10);
-doc.text("Smart Billing Solution", 14, 21);
+  // =========================
+  // HEADER (LEFT)
+  // =========================
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(16);
+  doc.text("BillSwift", 14, 15);
 
-doc.setFontSize(14);
-doc.text(inv.shop_name || "Your Store", 105, 20, { align: "center" });
+  doc.setFontSize(10);
+  doc.text("Smart Billing Solution", 14, 21);
 
-doc.setFontSize(10);
-doc.text(inv.address || "", 105, 26, { align: "center" });
-doc.text(inv.contact || "", 105, 31, { align: "center" });
+  doc.setFont("helvetica", "normal");
 
-// RIGHT SIDE INFO
-doc.text(`Date: ${new Date(inv.created_at).toLocaleDateString()}`, 150, 20);
-doc.text(`Invoice No: ${inv.invoice_no}`, 150, 26);
+  // =========================
+  // SHOP DETAILS (CENTER)
+  // =========================
+  doc.setFontSize(14);
+  doc.text(inv.shop_name || "Your Store", 105, 20, { align: "center" });
 
+  doc.setFontSize(10);
+  doc.text(inv.address || "", 105, 26, { align: "center" });
+  doc.text(inv.contact || "", 105, 31, { align: "center" });
+  doc.text(`GSTIN: ${inv.gstin || ""}`, 105, 36, { align: "center" });
 
-    // Customer
-    doc.text("Customer Details:", 14, 55);
-    doc.text(`Customer Name: ${inv.customer}`, 14, 61);
+  // =========================
+  // INVOICE INFO (RIGHT)
+  // =========================
+  doc.text(`Date: ${new Date(inv.created_at).toLocaleDateString()}`, 140, 40);
+  doc.text(`Invoice No: ${inv.invoice_no}`, 140, 45);
 
-    // TABLE
-    autoTable(doc, {
-  startY: 70,
+  // =========================
+  // CUSTOMER DETAILS
+  // =========================
+  doc.text(`Customer Details: ${inv.customer}`, 14, 55);
 
-  head: [["Sl No", "Item", "Qty", "Price", "Disc", "Total"]],
-
-  body: items.map((item: any, index: number) => [
-  index + 1,
-  item.description || "",   // ✅ FIXED
-  item.quantity || 0,       // ✅ FIXED
-  item.price || 0,
-  item.discount || 0,
-  item.total || 0,
-]),
-
-  styles: {
-    halign: "center",   // ✅ horizontal center
-    valign: "middle",   // ✅ vertical center
-    fontSize: 10,
-  },
-
-  headStyles: {
-    fillColor: [52, 122, 183],
-    textColor: 255,
-    halign: "center",
-    valign: "middle",
-  },
-
-  columnStyles: {
-    1: { halign: "left" }, // 👈 ONLY Item column left-aligned (better readability)
-  },
-});
-
-    const finalY = (doc as any).lastAutoTable.finalY + 10;
-
-    const subtotal = inv.subtotal || 0;
-    const gst = inv.gst || 0;
-    const gstAmount = (subtotal * gst) / 100;
-
-    // TOTALS
-    const totalX = 190;
-
-doc.setFontSize(10);
-
-// SAME Y for label + value
-doc.text("Subtotal:", 140, finalY);
-doc.text(`Rs. ${subtotal.toFixed(2)}`, 200, finalY, { align: "right" });
-
-doc.text(`GST (${gst}%):`, 140, finalY + 6);
-doc.text(`Rs. ${gstAmount.toFixed(2)}`, 200, finalY + 6, { align: "right" });
-
-doc.text("Discount:", 140, finalY + 12);
-doc.text(`Rs. ${inv.discount || 0}`, 200, finalY + 12, { align: "right" });
-
-doc.text("----------------------", 140, finalY + 16);
-
-doc.setFontSize(12);
-doc.text("Grand Total:", 140, finalY + 22);
-doc.text(`Rs. ${inv.total}`, 200, finalY + 22, { align: "right" });
-
-    // SIGNATURE (aligned with totals column)
-const signatureX = 200; // SAME as totals values column
-
-doc.setFontSize(10);
-
-// Increase gap from Grand Total
-const signatureY = finalY + 45;
-
-doc.text("Authorized Signature", signatureX, signatureY, { align: "right" });
-doc.text("(Stamp & Signature)", signatureX, signatureY + 6, { align: "right" });
-
-    // FOOTER
-    doc.text("Thank you for your business!", 14, 280);
-    doc.save(`${inv.invoice_no}.pdf`);
+  // =========================
+  // ITEMS TABLE
+  // =========================
+  let items = [];
+  try {
+    items = JSON.parse(inv.description || "[]");
+  } catch {
+    items = [];
   }
+
+  autoTable(doc, {
+    startY: 65,
+    head: [["Sl No", "Item", "Qty", "Price", "Disc", "Total"]],
+    body: items.map((item: any, index: number) => {
+      const qty = item.quantity || 0;
+      const price = item.price || 0;
+      const discount = item.discount || 0;
+      const total = qty * price - discount;
+
+      return [
+        index + 1,
+        item.description || "",
+        qty,
+        `Rs. ${price.toFixed(2)}`,
+        discount,
+        `Rs. ${total.toFixed(2)}`,
+      ];
+    }),
+
+    styles: {
+      halign: "center",
+      valign: "middle",
+    },
+
+    headStyles: {
+      fillColor: [41, 128, 185],
+      textColor: 255,
+    },
+  });
+
+  const finalY = (doc as any).lastAutoTable.finalY + 10;
+
+  const subtotal = inv.subtotal || 0;
+  const gst = inv.gst || 0;
+  const gstAmount = (subtotal * gst) / 100;
+
+  // =========================
+  // TOTALS (ALIGNED)
+  // =========================
+  doc.text("Subtotal:", 125, finalY);
+  doc.text(`Rs. ${subtotal.toFixed(2)}`, 185, finalY, { align: "right" });
+
+  doc.text(`GST (${gst}%):`, 125, finalY + 6);
+  doc.text(`Rs. ${gstAmount.toFixed(2)}`, 185, finalY + 6, { align: "right" });
+
+  doc.text("Discount:", 125, finalY + 12);
+  doc.text(`Rs. ${(inv.discount || 0).toFixed(2)}`, 185, finalY + 12, { align: "right" });
+
+  // LINE
+  doc.line(120, finalY + 16, 185, finalY + 16);
+
+  // GRAND TOTAL
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Grand Total:", 120, finalY + 22);
+  doc.text(`Rs. ${Number(inv.total).toFixed(2)}`, 185, finalY + 22, { align: "right" });
+  doc.setFont("helvetica", "normal");
+
+  // =========================
+  // SIGNATURE
+  // =========================
+  const signatureY = finalY + 65;
+
+  doc.text("Authorized Signature", 185, signatureY, { align: "right" });
+  doc.text("(Stamp & Signature)", 185, signatureY + 6, { align: "right" });
+
+  // =========================
+  // FOOTER
+  // =========================
+  const pageHeight = doc.internal.pageSize.height;
+
+doc.text("NB: Thank you for doing business with us!", 12, pageHeight - 10);
+
+  doc.save(`${inv.invoice_no}.pdf`);
+}
+    
 const th = {
   padding: "10px",
   border: "1px solid #ddd",
