@@ -1,14 +1,17 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function InvoicesPage() {
 
+  const searchParams = useSearchParams();
+const id = searchParams.get("id");
   const [items, setItems] = useState([
     { description: "", quantity: 1, price: 0 },
   ]);
-
+const [editingId, setEditingId] = useState<number | null>(null);
   const [customer, setCustomer] = useState("");
   const [discount, setDiscount] = useState(0);
   const [gst, setGst] = useState(18);
@@ -35,6 +38,22 @@ export default function InvoicesPage() {
     if (savedAddress) setShopAddress(savedAddress);
     if (savedContact) setContactDetails(savedContact);
   }, []);
+
+  useEffect(() => {
+  const data = localStorage.getItem("editInvoice");
+
+  if (data) {
+    const inv = JSON.parse(data);
+
+    setCustomer(inv.customer || "");
+    setGstin(inv.gstin || "");
+    setItems(JSON.parse(inv.description || "[]"));
+    setGst(inv.gst || 0);
+    setDiscount(inv.discount || 0);
+
+    setEditingId(inv.id); // 🔥 IMPORTANT
+  }
+}, []);
 
   useEffect(() => {
     localStorage.setItem("shopName", shopName);
@@ -96,16 +115,41 @@ export default function InvoicesPage() {
         },
       ]);
 
-    if (error) {
-      console.log(error);
-      alert(JSON.stringify(error));
-    } else {
-      alert("Invoice saved successfully!");
+    if (editingId) {
+  // 🔥 UPDATE EXISTING
+  await supabase
+    .from("invoices")
+    .update({
+      customer,
+      gstin,
+      description: JSON.stringify(items),
+      gst,
+      discount,
+      total,
+      subtotal,
+    })
+    .eq("id", editingId);
 
-      setCustomer("");
-      setItems([{ description: "", quantity: 1, price: 0 }]);
-      setDiscount(0);
-    }
+  localStorage.removeItem("editInvoice");
+  setEditingId(null);
+
+  alert("Invoice Updated!");
+} else {
+  // 🔥 CREATE NEW
+  await supabase.from("invoices").insert([
+    {
+      customer,
+      gstin,
+      description: JSON.stringify(items),
+      gst,
+      discount,
+      total,
+      subtotal,
+    },
+  ]);
+
+  alert("Invoice Saved!");
+}
   };
 
   return (
@@ -249,12 +293,9 @@ export default function InvoicesPage() {
 
         </div>
 
-        <button
-          onClick={saveInvoice}
-          className="w-full bg-blue-600 text-white py-3 rounded"
-        >
-          Save Invoice
-        </button>
+        <button>
+  {editingId ? "Update Invoice" : "Save Invoice"}
+</button>
 
       </div>
     </main>
