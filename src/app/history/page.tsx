@@ -6,9 +6,14 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useRouter } from "next/navigation";
 
+
 export default function HistoryPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const router = useRouter();
+  const [search, setSearch] = useState("");
+const [fromDate, setFromDate] = useState("");
+const [toDate, setToDate] = useState("");
+const [sortOrder, setSortOrder] = useState("latest");
 
   useEffect(() => {
     fetchInvoices();
@@ -74,6 +79,33 @@ export default function HistoryPage() {
   // CUSTOMER DETAILS
   // =========================
   doc.text(`Customer Details: ${inv.customer}`, 14, 55);
+
+  <input
+  type="text"
+  placeholder="Search by customer or invoice no..."
+  value={search}
+  onChange={(e) => setSearch(e.target.value)}
+  style={{
+    padding: "8px",
+    width: "300px",
+    marginBottom: "15px",
+    border: "1px solid #ccc",
+  }}
+/>
+>
+<div style={{ display: "flex", gap: "10px", marginBottom: "15px" }}>
+  <input
+    type="date"
+    value={fromDate}
+    onChange={(e) => setFromDate(e.target.value)}
+  />
+
+  <input
+    type="date"
+    value={toDate}
+    onChange={(e) => setToDate(e.target.value)}
+  />
+</div>
 
   // =========================
   // ITEMS TABLE
@@ -160,7 +192,57 @@ doc.text("NB: Thank you for doing business with us!", 12, pageHeight - 10);
 
   doc.save(`${inv.invoice_no}.pdf`);
 }
+{invoices.filter((inv) => {
+  const matchesSearch =
+    (inv.customer || "").toLowerCase().includes(search.toLowerCase()) ||
+    (inv.invoice_no || "").toLowerCase().includes(search.toLowerCase());
+
+  const invoiceDate = new Date(inv.date);
+
+  const matchesFromDate = fromDate
+    ? invoiceDate >= new Date(fromDate)
+    : true;
+
+  const matchesToDate = toDate
+    ? invoiceDate <= new Date(toDate)
+    : true;
+
+  return matchesSearch && matchesFromDate && matchesToDate;
+}).length === 0 && (
+  <p>No invoices found</p>
+)}
     
+{invoices
+  .filter((inv) => {
+    const matchesSearch =
+      (inv.customer || "").toLowerCase().includes(search.toLowerCase()) ||
+      (inv.invoice_no || "").toLowerCase().includes(search.toLowerCase());
+
+    const invoiceDate = new Date(inv.date);
+
+    const matchesFromDate = fromDate
+      ? invoiceDate >= new Date(fromDate)
+      : true;
+
+    const matchesToDate = toDate
+      ? invoiceDate <= new Date(toDate)
+      : true;
+
+    return matchesSearch && matchesFromDate && matchesToDate;
+  })
+  .sort((a, b) => {
+  const dateA = new Date(a.date || a.created_at).getTime();
+  const dateB = new Date(b.date || b.created_at).getTime();
+console.log("Sort Order:", sortOrder);
+  return sortOrder === "latest"
+    ? dateB - dateA
+    : dateA - dateB;
+})
+  .map((inv) => (
+    <tr key={inv.id}>
+      {/* your row content */}
+    </tr>
+  ))}
 const th = {
   padding: "10px",
   border: "1px solid #ddd",
@@ -201,6 +283,28 @@ const deleteBtn = {
   <div style={{ padding: 20, background: "#fff", minHeight: "100vh" }}>
     <h1 style={{ fontSize: 28, marginBottom: 20 }}>Invoice History</h1>
 
+<select
+  value={sortOrder}
+  onChange={(e) => setSortOrder(e.target.value)}
+  style={{ padding: "8px", marginBottom: "15px" }}
+>
+  <option value="latest">Latest First</option>
+  <option value="oldest">Oldest First</option>
+</select>
+
+<input
+  type="text"
+  placeholder="Search by customer or invoice no..."
+  value={search}
+  onChange={(e) => setSearch(e.target.value)}
+  style={{
+    padding: "10px",
+    width: "300px",
+    margin: "15px 0",
+    border: "1px solid #ccc",
+    borderRadius: "5px",
+  }}
+/>
     <table
       style={{
         width: "100%",
@@ -219,7 +323,12 @@ const deleteBtn = {
       </thead>
 
       <tbody>
-        {invoices.map((inv) => (
+        {invoices
+  .filter((inv) =>
+    inv.customer?.toLowerCase().includes(search.toLowerCase()) ||
+    inv.invoice_no?.toLowerCase().includes(search.toLowerCase())
+  )
+  .map((inv) => (
           <tr key={inv.id} style={{ borderBottom: "1px solid #ddd" }}>
             <td style={td}>{inv.invoice_no}</td>
             <td style={td}>{inv.customer}</td>
@@ -233,7 +342,7 @@ const deleteBtn = {
             {/* ✅ FIXED ACTION BUTTONS */}
             <td style={td}>
               <button style={editBtn}
-                onClick={() => router.push(`/invoices?id=${inv.id}`)}
+               onClick={() => router.push(`/invoices?id=${inv.id}`)}
               >
                 Edit
               </button>

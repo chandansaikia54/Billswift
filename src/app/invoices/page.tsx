@@ -1,12 +1,14 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function InvoicesPage() {
 
   const searchParams = useSearchParams();
+  const router = useRouter();
 const id = searchParams.get("id");
   const [items, setItems] = useState([
     { description: "", quantity: 1, price: 0 },
@@ -16,11 +18,11 @@ const [editingId, setEditingId] = useState<number | null>(null);
   const [discount, setDiscount] = useState(0);
   const [gst, setGst] = useState(18);
   const [currency, setCurrency] = useState("INR");
-
   const [shopName, setShopName] = useState("Shop Name");
   const [shopAddress, setShopAddress] = useState("Address");
   const [contactDetails, setContactDetails] = useState("Phone No.");
   const [gstin, setGstin] = useState("");
+  
 
   const currencyMap: any = {
     INR: "₹",
@@ -28,6 +30,30 @@ const [editingId, setEditingId] = useState<number | null>(null);
     EUR: "€",
     GBP: "£",
   };
+  
+  useEffect(() => {
+  if (!id) return;
+
+  const fetchInvoice = async () => {
+    const { data } = await supabase
+      .from("invoices")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (data) {
+      setCustomer(data.customer || "");
+      setGstin(data.gstin || "");
+      setItems(JSON.parse(data.description || "[]"));
+      setGst(data.gst || 0);
+      setDiscount(data.discount || 0);
+
+      setEditingId(data.id);
+    }
+  };
+
+  fetchInvoice();
+}, [id]);
 
   useEffect(() => {
     const savedShop = localStorage.getItem("shopName");
@@ -117,23 +143,28 @@ const [editingId, setEditingId] = useState<number | null>(null);
 
     if (editingId) {
   // 🔥 UPDATE EXISTING
-  await supabase
-    .from("invoices")
-    .update({
-      customer,
-      gstin,
-      description: JSON.stringify(items),
-      gst,
-      discount,
-      total,
-      subtotal,
-    })
-    .eq("id", editingId);
+  const { error } = await supabase
+  .from("invoices")
+  .update({
+    customer,
+    gstin,
+    description: JSON.stringify(items),
+    gst,
+    discount,
+    total,
+    subtotal,
+  })
+  .eq("id", Number(editingId)); // 🔥 important
 
-  localStorage.removeItem("editInvoice");
-  setEditingId(null);
+if (error) {
+  console.log(error);
+  alert("Update failed!");
+  return;
+}
 
-  alert("Invoice Updated!");
+alert("Invoice Updated!");
+router.push("/history");
+  
 } else {
   // 🔥 CREATE NEW
   await supabase.from("invoices").insert([
@@ -149,6 +180,7 @@ const [editingId, setEditingId] = useState<number | null>(null);
   ]);
 
   alert("Invoice Saved!");
+  
 }
   };
 
@@ -293,7 +325,10 @@ const [editingId, setEditingId] = useState<number | null>(null);
 
         </div>
 
-        <button>
+        <button
+  onClick={saveInvoice}
+  className="bg-blue-600 text-white px-4 py-2 rounded mt-4 w-full"
+>
   {editingId ? "Update Invoice" : "Save Invoice"}
 </button>
 
