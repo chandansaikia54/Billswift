@@ -15,6 +15,7 @@ const id = searchParams.get("id");
   ]);
 const [editingId, setEditingId] = useState<number | null>(null);
   const [customer, setCustomer] = useState("");
+  const [customers, setCustomers] = useState<any[]>([]);
   const [discount, setDiscount] = useState(0);
   const [gst, setGst] = useState(18);
   const [currency, setCurrency] = useState("INR");
@@ -22,6 +23,9 @@ const [editingId, setEditingId] = useState<number | null>(null);
   const [shopAddress, setShopAddress] = useState("Address");
   const [contactDetails, setContactDetails] = useState("Phone No.");
   const [gstin, setGstin] = useState("");
+  const [products, setProducts] = useState<any[]>([]);
+  const [amountReceived, setAmountReceived] = useState(0);
+  
   
 
   const currencyMap: any = {
@@ -30,6 +34,19 @@ const [editingId, setEditingId] = useState<number | null>(null);
     EUR: "€",
     GBP: "£",
   };
+
+  useEffect(() => {
+  fetchProducts();
+}, []);
+
+async function fetchProducts() {
+  const { data } = await supabase
+    .from("products")
+    .select("*")
+    .order("product_name");
+
+  setProducts(data || []);
+}
   
   useEffect(() => {
   if (!id) return;
@@ -87,6 +104,18 @@ const [editingId, setEditingId] = useState<number | null>(null);
     localStorage.setItem("contactDetails", contactDetails);
   }, [shopName, shopAddress, contactDetails]);
 
+  useEffect(() => {
+  fetchCustomers();
+}, []);
+
+async function fetchCustomers() {
+  const { data } = await supabase
+    .from("customers")
+    .select("*")
+    .order("customer_name");
+
+  setCustomers(data || []);
+}
   // CALCULATIONS
 
   const subtotal = items.reduce(
@@ -97,6 +126,7 @@ const [editingId, setEditingId] = useState<number | null>(null);
   const gstAmount = (subtotal * gst) / 100;
 
   const total = subtotal + gstAmount - discount;
+  const balanceDue = total - amountReceived;
 
   // ITEM HANDLING
 
@@ -117,30 +147,7 @@ const [editingId, setEditingId] = useState<number | null>(null);
   // SAVE INVOICE
 
   const saveInvoice = async () => {
-    const invoiceNo = "INV-" + Date.now();
-    const firstItem = items[0];
-
-    const { error } = await supabase
-      .from("invoices")
-      .insert([
-        {
-          customer,
-          description: JSON.stringify(items),
-          subtotal,
-          gst,
-          quantity: firstItem.quantity,
-          price: firstItem.price,
-          discount,
-          total,
-          gstin,
-          invoice_no: invoiceNo,
-          currency,
-          shop_name: shopName,
-          address: shopAddress,
-          contact: contactDetails,
-        },
-      ]);
-
+    
     if (editingId) {
   // 🔥 UPDATE EXISTING
   const { error } = await supabase
@@ -168,16 +175,18 @@ router.push("/history");
 } else {
   // 🔥 CREATE NEW
   await supabase.from("invoices").insert([
-    {
-      customer,
-      gstin,
-      description: JSON.stringify(items),
-      gst,
-      discount,
-      total,
-      subtotal,
-    },
-  ]);
+  {
+    customer,
+    gstin,
+    description: JSON.stringify(items),
+    gst,
+    discount,
+    total,
+    subtotal,
+    amount_received: amountReceived,
+    balance_due: balanceDue,
+  },
+]);
 
   alert("Invoice Saved!");
   
@@ -233,27 +242,80 @@ router.push("/history");
 
         {/* CUSTOMER */}
 
-        <input
-          type="text"
-          placeholder="Customer Name"
-          value={customer}
-          onChange={(e) => setCustomer(e.target.value)}
-          className="w-full p-3 border rounded mb-6"
-        />
+        <select
+  value={customer}
+  onChange={(e) => {
+    setCustomer(e.target.value);
+
+    const selectedCustomer =
+      customers.find(
+        (c) =>
+          c.customer_name === e.target.value
+      );
+
+    if (selectedCustomer) {
+      setGstin(
+        selectedCustomer.gstin || ""
+      );
+    }
+  }}
+  className="w-full p-3 border rounded mb-6"
+>
+  <option value="">
+    Select Customer
+  </option>
+
+  {customers.map((c) => (
+    <option
+      key={c.id}
+      value={c.customer_name}
+    >
+      {c.customer_name}
+    </option>
+  ))}
+</select>
 
         {/* ITEMS */}
 
         {items.map((item, index) => (
           <div key={index} className="border p-4 mb-4 rounded">
 
-            <input
-              value={item.description}
-              onChange={(e) =>
-                updateItem(index, "description", e.target.value)
-              }
-              className="w-full p-3 border rounded mb-3"
-              placeholder="Item Description"
-            />
+            <select
+  value={item.description}
+  onChange={(e) => {
+    const selected = products.find(
+      (p) => p.product_name === e.target.value
+    );
+
+    updateItem(
+      index,
+      "description",
+      e.target.value
+    );
+
+    if (selected) {
+      updateItem(
+        index,
+        "price",
+        Number(selected.price)
+      );
+    }
+  }}
+  className="w-full p-3 border rounded mb-3"
+>
+  <option value="">
+    Select Product
+  </option>
+
+  {products.map((p) => (
+    <option
+      key={p.id}
+      value={p.product_name}
+    >
+      {p.product_name}
+    </option>
+  ))}
+</select>
 
             <div className="flex gap-4">
 
@@ -309,6 +371,16 @@ router.push("/history");
           placeholder="Discount"
         />
 
+        <input
+  type="number"
+  value={amountReceived}
+  onChange={(e) =>
+    setAmountReceived(Number(e.target.value))
+  }
+  className="w-full p-3 border rounded mb-4"
+  placeholder="Amount Received"
+/>
+
         {/* TOTALS */}
 
         <div className="bg-gray-100 p-6 rounded mb-6">
@@ -319,9 +391,25 @@ router.push("/history");
 
           <hr className="my-3" />
 
-          <p className="text-2xl font-bold text-blue-700">
-            Total: {currencyMap[currency]} {total.toFixed(2)}
-          </p>
+          <p>
+  Amount Received: {currencyMap[currency]}
+  {" "}
+  {amountReceived.toFixed(2)}
+</p>
+
+<p className="text-red-600 font-bold mt-2">
+  Balance Due: {currencyMap[currency]}
+  {" "}
+  {balanceDue.toFixed(2)}
+</p>
+
+<hr className="my-3" />
+
+<p className="text-2xl font-bold text-blue-700">
+  Total: {currencyMap[currency]}
+  {" "}
+  {total.toFixed(2)}
+</p>
 
         </div>
 
