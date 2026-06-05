@@ -64,7 +64,7 @@ async function fetchProducts() {
       setItems(JSON.parse(data.description || "[]"));
       setGst(data.gst || 0);
       setDiscount(data.discount || 0);
-
+setAmountReceived(Number(data.amount_received || 0));
       setEditingId(data.id);
     }
   };
@@ -147,20 +147,27 @@ async function fetchCustomers() {
   // SAVE INVOICE
 
   const saveInvoice = async () => {
-    
+    const invoiceNo = "INV-" + Date.now();
+const firstItem = items[0];
     if (editingId) {
   // 🔥 UPDATE EXISTING
   const { error } = await supabase
   .from("invoices")
   .update({
-    customer,
-    gstin,
-    description: JSON.stringify(items),
-    gst,
-    discount,
-    total,
-    subtotal,
-  })
+  customer,
+  gstin,
+
+  description: JSON.stringify(items),
+
+  gst,
+  discount,
+
+  subtotal,
+  total,
+
+  amount_received: amountReceived,
+  balance_due: balanceDue,
+})
   .eq("id", Number(editingId)); // 🔥 important
 
 if (error) {
@@ -178,13 +185,27 @@ router.push("/history");
   {
     customer,
     gstin,
+
+    invoice_no: invoiceNo,
+
     description: JSON.stringify(items),
+
+    subtotal,
     gst,
     discount,
     total,
-    subtotal,
+
     amount_received: amountReceived,
     balance_due: balanceDue,
+
+    quantity: firstItem?.quantity || 0,
+    price: firstItem?.price || 0,
+
+    currency,
+
+    shop_name: shopName,
+    address: shopAddress,
+    contact: contactDetails,
   },
 ]);
 
@@ -283,24 +304,22 @@ router.push("/history");
             <select
   value={item.description}
   onChange={(e) => {
-    const selected = products.find(
-      (p) => p.product_name === e.target.value
-    );
+  const selected = products.find(
+    (p) => p.product_name === e.target.value
+  );
 
-    updateItem(
-      index,
-      "description",
-      e.target.value
-    );
+  const updatedItems = [...items];
 
-    if (selected) {
-      updateItem(
-        index,
-        "price",
-        Number(selected.price)
-      );
-    }
-  }}
+  updatedItems[index] = {
+    ...updatedItems[index],
+    description: e.target.value,
+    price: selected
+      ? Number(selected.price)
+      : updatedItems[index].price,
+  };
+
+  setItems(updatedItems);
+}}
   className="w-full p-3 border rounded mb-3"
 >
   <option value="">
@@ -353,32 +372,39 @@ router.push("/history");
 
         {/* GST */}
 
-        <input
-          type="number"
-          value={gst}
-          onChange={(e) => setGst(Number(e.target.value))}
-          className="w-full p-3 border rounded mb-4"
-          placeholder="GST %"
-        />
+        <label className="font-semibold block mb-1">
+  GST %
+</label>
 
-        {/* DISCOUNT */}
+<input
+  type="number"
+  value={gst}
+  onChange={(e) => setGst(Number(e.target.value))}
+  className="w-full p-3 border rounded mb-4"
+/>
 
-        <input
-          type="number"
-          value={discount}
-          onChange={(e) => setDiscount(Number(e.target.value))}
-          className="w-full p-3 border rounded mb-4"
-          placeholder="Discount"
-        />
+<label className="font-semibold block mb-1">
+  Discount
+</label>
 
-        <input
+<input
+  type="number"
+  value={discount}
+  onChange={(e) => setDiscount(Number(e.target.value))}
+  className="w-full p-3 border rounded mb-4"
+/>
+
+<label className="font-semibold block mb-1">
+  Amount Received
+</label>
+
+<input
   type="number"
   value={amountReceived}
   onChange={(e) =>
     setAmountReceived(Number(e.target.value))
   }
   className="w-full p-3 border rounded mb-4"
-  placeholder="Amount Received"
 />
 
         {/* TOTALS */}

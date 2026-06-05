@@ -41,11 +41,112 @@ export default function HistoryPage() {
   }
 
   function generatePDF(inv: any) {
-    const doc = new jsPDF();
-    doc.text("Invoice", 20, 20);
-    doc.save(`${inv.invoice_no}.pdf`);
+  const doc = new jsPDF();
+
+  let products: any[] = [];
+
+  try {
+    products = JSON.parse(inv.description || "[]");
+  } catch {
+    products = [];
   }
-console.log("Invoices State:", invoices);
+
+  // Header
+  doc.setFontSize(20);
+  doc.text("BillSwift Invoice", 14, 20);
+
+  doc.setFontSize(11);
+
+  doc.text(
+    `Invoice No: ${inv.invoice_no || "-"}`,
+    14,
+    35
+  );
+
+  doc.text(
+    `Customer: ${inv.customer || "-"}`,
+    14,
+    42
+  );
+
+  doc.text(
+    `Date: ${new Date(
+      inv.created_at
+    ).toLocaleDateString()}`,
+    14,
+    49
+  );
+
+  // Product Table
+  autoTable(doc, {
+    startY: 60,
+    head: [["Product", "Qty", "Price", "Total"]],
+    body: products.map((p: any) => [
+      p.description,
+      p.quantity,
+      p.price,
+      p.quantity * p.price,
+    ]),
+  });
+
+  const finalY =
+    (doc as any).lastAutoTable.finalY + 15;
+
+  doc.text(
+    `Subtotal: Rs. ${Number(
+      inv.subtotal || 0
+    ).toFixed(2)}`,
+    14,
+    finalY
+  );
+
+  doc.text(
+    `GST: ${Number(
+      inv.gst || 0
+    ).toFixed(2)} %`,
+    14,
+    finalY + 8
+  );
+
+  doc.text(
+    `Discount: Rs. ${Number(
+      inv.discount || 0
+    ).toFixed(2)}`,
+    14,
+    finalY + 16
+  );
+
+  doc.text(
+    `Amount Received: Rs. ${Number(
+      inv.amount_received || 0
+    ).toFixed(2)}`,
+    14,
+    finalY + 24
+  );
+
+  doc.text(
+    `Balance Due: Rs. ${Number(
+      inv.balance_due || 0
+    ).toFixed(2)}`,
+    14,
+    finalY + 32
+  );
+
+  doc.setFontSize(14);
+
+  doc.text(
+    `Grand Total: Rs. ${Number(
+      inv.total || 0
+    ).toFixed(2)}`,
+    14,
+    finalY + 45
+  );
+
+  doc.save(
+    `${inv.invoice_no || "invoice"}.pdf`
+  );
+}
+
   const filteredInvoices = invoices
   .filter((inv) => {
     if (!search) return true;

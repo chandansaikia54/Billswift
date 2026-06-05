@@ -10,6 +10,8 @@ export default function Dashboard() {
   const [monthSales, setMonthSales] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [recentInvoices, setRecentInvoices] = useState<any[]>([]);
+  const [amountReceived, setAmountReceived] = useState(0);
+const [outstandingDue, setOutstandingDue] = useState(0);
 
   useEffect(() => {
     loadDashboard();
@@ -51,12 +53,17 @@ const todayEnd = new Date(
     const currentYear = new Date().getFullYear();
 
     let todayTotal = 0;
-    let monthTotal = 0;
-    let revenueTotal = 0;
+let monthTotal = 0;
+let revenueTotal = 0;
+
+let receivedTotal = 0;
+let dueTotal = 0;
 
     data.forEach((inv: any) => {
       const amount = Number(inv.total || 0);
 
+      receivedTotal += Number(inv.amount_received || 0);
+dueTotal += Number(inv.balance_due || 0);
       revenueTotal += amount;
 
       const invoiceDate = new Date(
@@ -79,8 +86,11 @@ const todayEnd = new Date(
     });
 
     setTodaySales(todayTotal);
-    setMonthSales(monthTotal);
-    setTotalRevenue(revenueTotal);
+setMonthSales(monthTotal);
+setTotalRevenue(revenueTotal);
+
+setAmountReceived(receivedTotal);
+setOutstandingDue(dueTotal);
   }
 
   return (
@@ -179,6 +189,26 @@ const todayEnd = new Date(
         ₹ {totalRevenue.toFixed(2)}
       </p>
     </div>
+
+<div className="bg-white p-6 rounded-2xl shadow">
+  <h2 className="text-lg font-semibold text-gray-600">
+    Amount Received
+  </h2>
+
+  <p className="text-3xl mt-3 font-bold text-green-600">
+    ₹ {amountReceived.toFixed(2)}
+  </p>
+</div>
+
+<div className="bg-white p-6 rounded-2xl shadow">
+  <h2 className="text-lg font-semibold text-gray-600">
+    Outstanding Due
+  </h2>
+
+  <p className="text-3xl mt-3 font-bold text-red-600">
+    ₹ {outstandingDue.toFixed(2)}
+  </p>
+</div>
 
   </div>
 <div className="md:col-span-4 bg-white rounded-2xl shadow p-6">
